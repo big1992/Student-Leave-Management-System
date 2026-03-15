@@ -1,0 +1,62 @@
+﻿
+> slms@0.1.0 build
+> next build
+
+โ–ฒ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+โ“ Compiled successfully in 2.3s
+  Running TypeScript ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/7) ...
+node.exe : Error occurred prerendering page "/admin". 
+Read more: 
+https://nextjs.org/docs/messages/prerender-error
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error o  
+  ccurred ...prerender-error:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Error [FirebaseError]: Firebase: Error 
+(auth/invalid-api-key).
+    at bD (D:\Student Leave Management System\.next\se
+rver\chunks\ssr\[root-of-the-server]__499236fa._.js:1:
+33222)
+    at bE (D:\Student Leave Management System\.next\se
+rver\chunks\ssr\[root-of-the-server]__499236fa._.js:1:
+33271)
+    at _.instanceFactory (D:\Student Leave Management 
+System\.next\server\chunks\ssr\[root-of-the-server]__4
+99236fa._.js:1:83432)
+    at ab.getOrInitializeService (D:\Student Leave 
+Management System\.next\server\chunks\ssr\[root-of-the
+-server]__499236fa._.js:1:13350)
+    at ab.initialize (D:\Student Leave Management Syst
+em\.next\server\chunks\ssr\[root-of-the-server]__49923
+6fa._.js:1:12758)
+    at cN (D:\Student Leave Management System\.next\se
+rver\chunks\ssr\[root-of-the-server]__499236fa._.js:1:
+70669)
+    at dx (D:\Student Leave Management System\.next\se
+rver\chunks\ssr\[root-of-the-server]__499236fa._.js:1:
+84069)
+    at module evaluation (D:\Student Leave Management 
+System\.next\server\chunks\ssr\[root-of-the-server]__4
+99236fa._.js:15:21328)
+    at instantiateModule (D:\Student Leave Management 
+System\.next\server\chunks\ssr\[turbopack]_runtime.js:
+740:9)
+    at getOrInstantiateModuleFromParent (D:\Student 
+Leave Management System\.next\server\chunks\ssr\[turbo
+pack]_runtime.js:763:12) {
+  code: 'auth/invalid-api-key',
+  customData: [Object],
+  digest: '2259464183'
+}
+Export encountered an error on /admin/page: /admin, 
+exiting the build.
+โจฏ Next.js build worker exited with code: 1 and 
+signal: null

@@ -1,0 +1,104 @@
+﻿[dotenv@17.3.1] injecting env (7) from .env.local -- tip: โ๏ธ  load multiple .env files with { path: ['.env.local', '.env'] }
+Starting Firebase seeding process...
+User admin@slms.com already exists. UID: 1ezxYuix3na2fJdtHmvBn9qddZC2
+node : Error during seeding: Error: 5 NOT_FOUND: 
+At line:1 char:1
++ node seedDatabase.js 2>&1 | Out-File -FilePath 
+seed.log -Encoding utf ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error d 
+   uring se...: 5 NOT_FOUND: :String) [], RemoteExc  
+  eption
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at callErrorFromStatus (D:\Student Leave 
+Management System\node_modules\google-gax\node_module
+s\@grpc\grpc-js\build\src\call.js:32:19)
+    at Object.onReceiveStatus (D:\Student Leave 
+Management System\node_modules\google-gax\node_module
+s\@grpc\grpc-js\build\src\client.js:193:76)
+    at Object.onReceiveStatus (D:\Student Leave 
+Management System\node_modules\google-gax\node_module
+s\@grpc\grpc-js\build\src\client-interceptors.js:367:
+141)
+    at Object.onReceiveStatus (D:\Student Leave 
+Management System\node_modules\google-gax\node_module
+s\@grpc\grpc-js\build\src\client-interceptors.js:327:
+181)
+    at D:\Student Leave Management System\node_module
+s\google-gax\node_modules\@grpc\grpc-js\build\src\res
+olving-call.js:135:78
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:85:11)
+for call at
+    at ServiceClientImpl.makeUnaryRequest 
+(D:\Student Leave Management System\node_modules\goog
+le-gax\node_modules\@grpc\grpc-js\build\src\client.js
+:161:32)
+    at ServiceClientImpl.<anonymous> (D:\Student 
+Leave Management System\node_modules\google-gax\node_
+modules\@grpc\grpc-js\build\src\make-client.js:105:19
+)
+    at D:\Student Leave Management System\node_module
+s\@google-cloud\firestore\build\src\v1\firestore_clie
+nt.js:242:33
+    at D:\Student Leave Management System\node_module
+s\google-gax\build\src\normalCalls\timeout.js:44:16
+    at repeat (D:\Student Leave Management System\nod
+e_modules\google-gax\build\src\normalCalls\retries.js
+:82:25)
+    at D:\Student Leave Management System\node_module
+s\google-gax\build\src\normalCalls\retries.js:125:13
+    at OngoingCallPromise.call (D:\Student Leave 
+Management System\node_modules\google-gax\build\src\c
+all.js:67:27)
+    at NormalApiCaller.call (D:\Student Leave 
+Management System\node_modules\google-gax\build\src\n
+ormalCalls\normalApiCaller.js:34:19)
+    at D:\Student Leave Management System\node_module
+s\google-gax\build\src\createApiCall.js:112:30
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:105:5)
+Caused by: Error
+    at _firestore._traceUtil.startActiveSpan 
+(D:\Student Leave Management System\node_modules\@goo
+gle-cloud\firestore\build\src\write-batch.js:438:27)
+    at D:\Student Leave Management System\node_module
+s\@google-cloud\firestore\build\src\telemetry\enabled
+-trace-util.js:110:30
+    at NoopContextManager.with (D:\Student Leave 
+Management System\node_modules\@opentelemetry\api\bui
+ld\src\context\NoopContextManager.js:25:19)
+    at ContextAPI.with (D:\Student Leave Management S
+ystem\node_modules\@opentelemetry\api\build\src\api\c
+ontext.js:60:46)
+    at NoopTracer.startActiveSpan (D:\Student Leave 
+Management System\node_modules\@opentelemetry\api\bui
+ld\src\trace\NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (D:\Student Leave 
+Management System\node_modules\@opentelemetry\api\bui
+ld\src\trace\ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (D:\Student 
+Leave Management System\node_modules\@google-cloud\fi
+restore\build\src\telemetry\enabled-trace-util.js:102
+:28)
+    at WriteBatch.commit (D:\Student Leave 
+Management System\node_modules\@google-cloud\firestor
+e\build\src\write-batch.js:436:43)
+    at D:\Student Leave Management System\node_module
+s\@google-cloud\firestore\build\src\reference\documen
+t-reference.js:350:31
+    at D:\Student Leave Management System\node_module
+s\@google-cloud\firestore\build\src\telemetry\enabled
+-trace-util.js:110:30 {
+  code: 5,
+  details: '',
+  metadata: Metadata {
+    internalRepr: Map(1) { 'x-debug-tracking-id' => 
+[Array] },
+    opaqueData: Map(0) {},
+    options: {}
+  },
+  note: 'Exception occurred in retry method that was 
+not classified as transient'
+}

@@ -1,0 +1,29 @@
+﻿node.exe : npm warn deprecated 
+node-domexception@1.0.0: Use your platform's native 
+DOMException instead
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn 
+    deprec...ception instead:String) [], RemoteExcep  
+  tion
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm warn deprecated glob@10.5.0: Old versions of glob 
+are not supported, and contain widely publicized 
+security vulnerabilities, which have been fixed in 
+the current version. Please update. Support for old 
+versions may be purchased (at exorbitant rates) by 
+contacting i@izs.me
+
+added 137 packages, and audited 579 packages in 18s
+
+173 packages are looking for funding
+  run `npm fund` for details
+
+8 low severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
