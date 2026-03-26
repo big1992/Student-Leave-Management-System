@@ -5,8 +5,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Role } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 export default function AddUserPage() {
   const { profile } = useAuth();
@@ -21,7 +23,24 @@ export default function AddUserPage() {
     password: "",
     role: "Student" as Role,
     department: "",
+    faculty: "",
+    advisorId: "",
   });
+
+  const [approvers, setApprovers] = useState<{id: string, name: string}[]>([]);
+
+  useEffect(() => {
+    async function fetchApprovers() {
+      try {
+        const q = query(collection(db, "users"), where("role", "==", "Approver"));
+        const snap = await getDocs(q);
+        setApprovers(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
+      } catch (err) {
+        console.error("Failed to fetch approvers", err);
+      }
+    }
+    fetchApprovers();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -55,6 +74,8 @@ export default function AddUserPage() {
         password: "",
         role: "Student",
         department: "",
+        faculty: "",
+        advisorId: "",
       });
     } catch (err: any) {
       console.error(err);
@@ -178,6 +199,42 @@ export default function AddUserPage() {
                   placeholder={t.deptPlaceholder}
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="faculty">
+                  Faculty
+                </label>
+                <input
+                  id="faculty"
+                  name="faculty"
+                  value={formData.faculty}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors"
+                  placeholder="e.g. Faculty of Science"
+                />
+              </div>
+
+              {formData.role === "Student" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="advisorId">
+                    Advisor
+                  </label>
+                  <select
+                    id="advisorId"
+                    name="advisorId"
+                    value={formData.advisorId}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors"
+                  >
+                    <option value="">-- No Advisor Assigned --</option>
+                    {approvers.map(app => (
+                      <option key={app.id} value={app.id}>
+                        {app.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-gray-100 flex justify-end">

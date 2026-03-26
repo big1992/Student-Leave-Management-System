@@ -19,7 +19,7 @@ interface LeaveRequest {
   endDate: string;
   reason: string;
   attachmentUrl?: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "cancelled";
   createdAt: any;
 }
 
@@ -114,11 +114,50 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
         timestamp: serverTimestamp()
       });
 
+      // 3. Notify Student
+      await addDoc(collection(db, "notifications"), {
+        recipientId: request.studentId,
+        title: actionType === "approved" ? "Request Approved (อนุมัติแล้ว)" : "Request Rejected (ไม่อนุมัติ)",
+        message: `Your leave request has been ${actionType}.`,
+        link: `/request/${request.id}`,
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
       // Redirect to Dashboard after action
       router.push("/");
     } catch (err: any) {
       console.error(err);
       setError("Failed to process action. Please try again.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!profile || !request) return;
+    if (!confirm(language === 'th' ? "คุณแน่ใจหรือไม่ว่าต้องการยกเลิกคำร้องนี้? ไม่สามารถย้อนกลับได้" : "Are you sure you want to cancel this leave request? This action cannot be undone.")) return;
+    
+    setProcessing(true);
+    setError("");
+
+    try {
+      await updateDoc(doc(db, "leaveRequests", request.id), {
+        status: "cancelled",
+        updatedAt: serverTimestamp(),
+      });
+
+      await addDoc(collection(db, "logs"), {
+        requestId: request.id,
+        action: "cancelled",
+        comment: "Student cancelled the request.",
+        timestamp: serverTimestamp()
+      });
+
+      setRequest({ ...request, status: "cancelled" } as LeaveRequest);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to cancel request.");
     } finally {
       setProcessing(false);
     }
@@ -199,6 +238,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
               {request.status === "approved" && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200"><CheckCircleIcon className="w-4 h-4 mr-1"/> {t.approve}</span>}
               {request.status === "rejected" && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200"><XCircleIcon className="w-4 h-4 mr-1"/> {t.reject}</span>}
               {request.status === "pending" && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200"><Clock className="w-4 h-4 mr-1"/> {t.pendingReview}</span>}
+              {request.status === "cancelled" && <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-200"><X className="w-4 h-4 mr-1"/> Cancelled</span>}
             </div>
           </div>
 
@@ -300,6 +340,25 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                 </section>
               )}
 
+              {/* Student Action Panel */}
+              {isPending && profile?.role === "Student" && request.studentId === profile.id && (
+                <section className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-red-100 bg-red-50">
+                    <h3 className="text-sm font-semibold text-red-900">Danger Zone</h3>
+                  </div>
+                  <div className="p-4 space-y-4 text-center">
+                    <p className="text-sm text-red-600">You can still cancel this request before it is approved.</p>
+                    <button
+                      onClick={handleCancel}
+                      disabled={processing}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 border border-transparent text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" /> Cancel Request
+                    </button>
+                  </div>
+                </section>
+              )}
+
               {/* Action History / Logs */}
               <section>
                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">{t.activityTimeline}</h3>
@@ -314,7 +373,9 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-semibold text-gray-900 text-sm">{log.action === 'approved' ? t.approve : t.reject}</span>
+                            <span className="font-semibold text-gray-900 text-sm">
+                              {log.action === 'approved' ? t.approve : log.action === 'rejected' ? t.reject : 'Cancelled'}
+                            </span>
                             <time className="text-xs font-medium text-gray-500 whitespace-nowrap">
                               {log.timestamp ? format(log.timestamp.toDate(), "MMM d, HH:mm") : 'Now'}
                             </time>

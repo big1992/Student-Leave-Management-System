@@ -12,7 +12,10 @@ export interface UserProfile {
   name: string;
   role: Role;
   department: string;
+  faculty?: string;
+  advisorId?: string;
   email: string;
+  isActive?: boolean;
 }
 
 interface AuthContextType {

@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot, orderBy, getDoc, doc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy, getDoc, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { format, differenceInDays } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -17,7 +17,7 @@ interface LeaveRequest {
   startDate: string;
   endDate: string;
   reason: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "cancelled";
   createdAt: any;
   studentId: string;
 }
@@ -35,6 +35,10 @@ export default function Dashboard() {
   const [leaveBalances, setLeaveBalances] = useState<Record<string, Record<string, { used: number; max: number; name: string }>>>({});
 
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [visibleStudentReqs, setVisibleStudentReqs] = useState(10);
+  const [visibleApproverReqs, setVisibleApproverReqs] = useState(10);
+  const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
+  const [batchProcessing, setBatchProcessing] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -50,8 +54,13 @@ export default function Dashboard() {
         collection(db, "leaveRequests"),
         where("studentId", "==", profile.id)
       );
+    } else if (profile.role === "Approver") {
+      q = query(
+        collection(db, "leaveRequests"),
+        where("approverId", "==", profile.id)
+      );
     } else {
-      // For Admin (all) and Approver (we fetch all and filter client side to avoid index necessity)
+      // For Admin (fetch all)
       q = collection(db, "leaveRequests");
     }
 
@@ -63,8 +72,9 @@ export default function Dashboard() {
 
       // Sort client-side to avoid requiring multiple composite indexes in Firestore
       data.sort((a, b) => {
-        const timeA = a.createdAt?.toDate?.()?.getTime() || 0;
-        const timeB = b.createdAt?.toDate?.()?.getTime() || 0;
+        // If createdAt is pending/null during a local optimistic update, assume it's right now.
+        const timeA = a.createdAt?.toDate?.()?.getTime() || Date.now();
+        const timeB = b.createdAt?.toDate?.()?.getTime() || Date.now();
         
         if (profile.role === "Approver") {
           return timeA - timeB; // Oldest first (asc)
@@ -81,15 +91,22 @@ export default function Dashboard() {
       let needsUpdate = false;
       
       for (const sId of uniqueStudentIds) {
-        // We only fetch if it's not already in state
+        if (userNames[sId] && userNames[sId] !== "Loading..." && userNames[sId] !== "Unknown Student") {
+          continue; // Skip if already correctly fetched
+        }
+        
         try {
           const userDoc = await getDoc(doc(db, "users", sId));
           if (userDoc.exists()) {
             fetchedNames[sId] = userDoc.data().name || sId;
-            needsUpdate = true;
+          } else {
+            fetchedNames[sId] = "Unknown Student";
           }
+          needsUpdate = true;
         } catch (e) {
           console.error("Error fetching user name:", e);
+          fetchedNames[sId] = "Unknown Student";
+          needsUpdate = true;
         }
       }
       
@@ -152,6 +169,8 @@ export default function Dashboard() {
         return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Approved</span>;
       case 'rejected':
         return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Rejected</span>;
+      case 'cancelled':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Cancelled</span>;
       default:
         return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Pending</span>;
     }
@@ -281,7 +300,7 @@ export default function Dashboard() {
                 ) : requests.length === 0 ? (
                   <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No leave requests found.</td></tr>
                 ) : (
-                  requests.map((request) => (
+                  requests.slice(0, visibleStudentReqs).map((request) => (
                     <tr 
                       key={request.id} 
                       onClick={() => router.push(`/request/${request.id}`)}
@@ -305,12 +324,70 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
+          {requests.length > visibleStudentReqs && (
+            <div className="px-6 py-4 border-t border-gray-50 flex justify-center bg-gray-50/30">
+              <button 
+                onClick={() => setVisibleStudentReqs(v => v + 10)}
+                className="text-sm text-blue-600 font-medium hover:text-blue-700 hover:underline px-4 py-2 rounded-lg"
+              >
+                Load More
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
   const renderApproverDashboard = () => {
+    const handleBatchAction = async (actionType: 'approved' | 'rejected') => {
+      if (!selectedRequests.length || !profile) return;
+      if (!confirm(`Are you sure you want to ${actionType} ${selectedRequests.length} requests?`)) return;
+
+      setBatchProcessing(true);
+      try {
+        const batch = writeBatch(db);
+        selectedRequests.forEach(reqId => {
+          const request = requests.find(r => r.id === reqId);
+          if (!request) return;
+
+          const reqRef = doc(db, "leaveRequests", reqId);
+          batch.update(reqRef, {
+            status: actionType,
+            updatedAt: serverTimestamp(),
+            approverId: profile.id
+          });
+
+          const logRef = doc(collection(db, "logs"));
+          batch.set(logRef, {
+            requestId: reqId,
+            approverId: profile.id,
+            action: actionType,
+            comment: `Batch ${actionType}`,
+            timestamp: serverTimestamp()
+          });
+
+          const notifRef = doc(collection(db, "notifications"));
+          batch.set(notifRef, {
+            recipientId: request.studentId,
+            title: actionType === "approved" ? "Request Approved (อนุมัติแล้ว)" : "Request Rejected (ไม่อนุมัติ)",
+            message: `Your leave request has been ${actionType} (Batch update).`,
+            link: `/request/${reqId}`,
+            read: false,
+            createdAt: serverTimestamp()
+          });
+        });
+
+        await batch.commit();
+        setSelectedRequests([]);
+      } catch (err) {
+        console.error("Batch processing failed:", err);
+        alert("Batch action failed.");
+      } finally {
+        setBatchProcessing(false);
+      }
+    };
+
     const filteredRequests = requests.filter(req => {
       if (activeTab === "pending") return req.status === "pending";
       return req.status !== "pending"; // History shows approved/rejected
@@ -354,6 +431,19 @@ export default function Dashboard() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50/50">
                 <tr>
+                  {activeTab === 'pending' && (
+                    <th scope="col" className="px-6 py-3 text-left w-12" onClick={e => e.stopPropagation()}>
+                      <input 
+                        type="checkbox"
+                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                        checked={filteredRequests.length > 0 && selectedRequests.length === Math.min(filteredRequests.length, visibleApproverReqs)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedRequests(filteredRequests.slice(0, visibleApproverReqs).map(r => r.id));
+                          else setSelectedRequests([]);
+                        }}
+                      />
+                    </th>
+                  )}
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.studentName}</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.leaveInfo}</th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t.leaveBalance}</th>
@@ -367,7 +457,7 @@ export default function Dashboard() {
                 ) : filteredRequests.length === 0 ? (
                   <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">{t.allCaughtUp}</td></tr>
                 ) : (
-                  filteredRequests.map((request) => {
+                  filteredRequests.slice(0, visibleApproverReqs).map((request) => {
                     const studentBalance = leaveBalances[request.studentId]?.[request.typeId];
                     const remaining = studentBalance ? Math.max(0, studentBalance.max - studentBalance.used) : 0;
                     const balanceText = studentBalance ? `${remaining} / ${studentBalance.max}` : "-";
@@ -376,8 +466,21 @@ export default function Dashboard() {
                       <tr 
                         key={request.id} 
                         onClick={() => router.push(`/request/${request.id}`)}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedRequests.includes(request.id) ? 'bg-blue-50/30' : ''}`}
                       >
+                        {activeTab === 'pending' && (
+                          <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                            <input 
+                              type="checkbox"
+                              className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                              checked={selectedRequests.includes(request.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedRequests([...selectedRequests, request.id]);
+                                else setSelectedRequests(selectedRequests.filter(id => id !== request.id));
+                              }}
+                            />
+                          </td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{userNames[request.studentId] || "Loading..."}</div>
                         </td>
@@ -408,7 +511,40 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
+          {filteredRequests.length > visibleApproverReqs && (
+            <div className="px-6 py-4 border-t border-gray-50 flex justify-center bg-gray-50/30">
+              <button 
+                onClick={() => setVisibleApproverReqs(v => v + 10)}
+                className="text-sm text-blue-600 font-medium hover:text-blue-700 hover:underline px-4 py-2 rounded-lg"
+              >
+                Load More
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Batch Actions Bar */}
+        {selectedRequests.length > 0 && activeTab === 'pending' && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 border-2 border-white text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-6 z-50 animate-in slide-in-from-bottom-5">
+            <span className="font-medium whitespace-nowrap">{selectedRequests.length} Selected</span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => handleBatchAction('approved')}
+                disabled={batchProcessing}
+                className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Approve
+              </button>
+              <button 
+                onClick={() => handleBatchAction('rejected')}
+                disabled={batchProcessing}
+                className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -430,8 +566,8 @@ export default function Dashboard() {
             <h3 className="font-semibold text-gray-800 mb-2">{t.manageUsers}</h3>
             <p className="text-sm text-gray-500 mb-6">{t.manageUsersDesc}</p>
           </div>
-          <Link href="/admin/add-user" className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 bg-blue-50/50 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors w-full justify-center">
-            {t.addNewUser}
+          <Link href="/admin/users" className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 bg-blue-50/50 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors w-full justify-center">
+            {t.manageUsers || "Manage Users"}
           </Link>
         </div>
 
@@ -450,14 +586,17 @@ export default function Dashboard() {
         </div>
 
         {/* Reports Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between items-start h-full opacity-60">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between items-start h-full">
           <div>
-            <div className="w-10 h-10 bg-gray-50 text-gray-600 rounded-xl flex items-center justify-center mb-4">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
               <FileText className="w-5 h-5" />
             </div>
             <h3 className="font-semibold text-gray-800 mb-2">{t.reports}</h3>
             <p className="text-sm text-gray-500 mb-6">{t.reportsDesc}</p>
           </div>
+          <Link href="/admin/reports" className="inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50/50 hover:bg-indigo-50 px-4 py-2 rounded-lg transition-colors w-full justify-center">
+            {t.viewReports || "View Reports"}
+          </Link>
         </div>
 
       </div>

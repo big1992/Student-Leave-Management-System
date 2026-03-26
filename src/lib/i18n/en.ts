@@ -51,12 +51,17 @@ export const en = {
   leaveTypesDesc: "Configure maximum days for sick leave, personal leave, etc.",
   sysSettings: "System Settings",
   reports: "Reports",
-  reportsDesc: "Export leave statistics and logs. (Coming soon)",
+  reportsDesc: "Export leave statistics and logs.",
+  viewReports: "View Reports",
 
   // Leave Types
   sickLeave: "Sick Leave",
   personalLeave: "Personal Leave",
   activityLeave: "Activity Leave",
+
+  faculty: "Faculty",
+  advisor: "Advisor",
+  selectAdvisor: "Select your Advisor",
 
   // Forms & Request Details
   backToDashboard: "Back to Dashboard",
@@ -127,4 +132,12 @@ export const en = {
   invalidCreds: "Invalid email or password.",
   loginFailed: "Failed to sign in. Please try again.",
 
-}
+  // Profile Settings
+  profileSettings: "Profile Settings",
+  updateProfile: "Update Profile",
+  changePassword: "Change Password",
+  currentPassword: "New Password",
+  confirmPassword: "Confirm New Password",
+  updateProfileSuccess: "Profile updated successfully!",
+  passwordMismatch: "Passwords do not match.",
+};

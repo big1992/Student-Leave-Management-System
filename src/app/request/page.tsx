@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { db, storage } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, getDocs, query, where, writeBatch, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
 
@@ -59,16 +59,27 @@ export default function RequestFormPage() {
         attachmentUrl = await getDownloadURL(snapshot.ref);
       }
 
-      await addDoc(collection(db, "leaveRequests"), {
+      const newRequest = await addDoc(collection(db, "leaveRequests"), {
         studentId: profile.id,
         typeId: data.typeId, // E.g. "sick", "personal"
         startDate: data.startDate,
         endDate: data.endDate,
         reason: data.reason,
         attachmentUrl,
+        approverId: profile.advisorId, // Route strictly to this advisor
         status: "pending", // pending, approved, rejected
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+      });
+
+      // Notify the specific Advisor
+      await addDoc(collection(db, "notifications"), {
+        recipientId: profile.advisorId,
+        title: "New Leave Request (คำร้องใหม่)",
+        message: `${profile.name} has submitted a new leave request.`,
+        link: `/request/${newRequest.id}`,
+        read: false,
+        createdAt: serverTimestamp()
       });
 
       router.push("/?success=true");
@@ -113,7 +124,16 @@ export default function RequestFormPage() {
               </div>
             )}
 
-            <div className="space-y-4">
+            {!profile?.advisorId && (
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex flex-col gap-2">
+                <p className="text-sm text-amber-800 font-medium">{language === 'th' ? "กรุณาตั้งค่าอาจารย์ที่ปรึกษาในหน้าโปรไฟล์ก่อนยื่นคำร้อง" : "Please select your Advisor in Profile Settings before submitting a request."}</p>
+                <Link href="/profile" className="text-sm text-indigo-600 hover:text-indigo-800 font-semibold underline w-fit">
+                  {language === 'th' ? "ไปที่หน้าโปรไฟล์" : "Go to Profile Settings"}
+                </Link>
+              </div>
+            )}
+
+            <div className={`space-y-4 ${!profile?.advisorId ? 'opacity-50 pointer-events-none' : ''}`}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="typeId">
                   {t.leaveType} <span className="text-red-500">*</span>
@@ -210,8 +230,8 @@ export default function RequestFormPage() {
             <div className="pt-4 border-t border-gray-100 flex justify-end">
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium rounded-xl shadow-md transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={isSubmitting || !profile?.advisorId}
+                className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isSubmitting ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

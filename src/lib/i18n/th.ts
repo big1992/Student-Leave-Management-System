@@ -51,7 +51,8 @@ export const th = {
   leaveTypesDesc: "กำหนดโควตาวันลาสำหรับลากิจ, ลาป่วย ฯลฯ",
   sysSettings: "การตั้งค่าระบบ",
   reports: "รายงานสถิติ",
-  reportsDesc: "ส่งออกข้อมูลสถิติและประวัติการลา (เตรียมเปิดใช้งานเร็วๆ นี้)",
+  reportsDesc: "ส่งออกข้อมูลสถิติและประวัติการลา",
+  viewReports: "ดูรายงาน",
 
   // Leave Types
   sickLeave: "ลาป่วย",
@@ -127,4 +128,16 @@ export const th = {
   invalidCreds: "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
   loginFailed: "ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง",
 
-}
+  // Profile Settings
+  profileSettings: "บัญชีผู้ใช้",
+  updateProfile: "อัปเดตข้อมูลส่วนตัว",
+  changePassword: "เปลี่ยนรหัสผ่าน",
+  currentPassword: "รหัสผ่านใหม่",
+  confirmPassword: "ยืนยันรหัสผ่านใหม่",
+  updateProfileSuccess: "อัปเดตข้อมูลส่วนตัวสำเร็จ!",
+  passwordMismatch: "รหัสผ่านไม่ตรงกัน",
+  
+  faculty: "คณะ",
+  advisor: "อาจารย์ที่ปรึกษา",
+  selectAdvisor: "-- เลือกอาจารย์ที่ปรึกษา --",
+};

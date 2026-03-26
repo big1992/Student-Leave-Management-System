@@ -27,40 +27,33 @@ if (!admin.apps.length) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password, name, role, department, faculty, advisorId } = body;
+    const { uid, newPassword } = body;
 
-    if (!email || !password || !name || !role) {
+    if (!uid || !newPassword) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing uid or newPassword' },
         { status: 400 }
       );
     }
 
-    // 1. Create user in Firebase Auth
-    const userRecord = await admin.auth().createUser({
-      email,
-      password,
-      displayName: name,
-    });
+    if (newPassword.length < 6) {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters' },
+        { status: 400 }
+      );
+    }
 
-    // 2. Add user profile to Firestore
-    const db = admin.firestore();
-    await db.collection('users').doc(userRecord.uid).set({
-      email,
-      name,
-      role,
-      department: department || '',
-      faculty: faculty || '',
-      ...(role === "Student" && advisorId ? { advisorId } : {}),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    // Update user password using Firebase Admin SDK
+    await admin.auth().updateUser(uid, {
+      password: newPassword,
     });
 
     return NextResponse.json(
-      { message: 'User created successfully', uid: userRecord.uid },
-      { status: 201 }
+      { message: 'Password updated successfully' },
+      { status: 200 }
     );
   } catch (error: any) {
-    console.error('Error creating user:', error);
+    console.error('Error updating password:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

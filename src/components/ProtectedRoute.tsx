@@ -33,6 +33,33 @@ export default function ProtectedRoute({
     return null;
   }
 
+  if (profile?.isActive === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-600 text-2xl font-bold">X</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Account Deactivated</h2>
+          <p className="text-gray-600 mb-6">
+            Your account has been deactivated by an administrator. Please contact support.
+          </p>
+          <button
+            onClick={async () => {
+              const { auth } = await import("@/lib/firebase");
+              const { signOut } = await import("firebase/auth");
+              await signOut(auth);
+              router.push("/login");
+            }}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-lg transition-colors"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
     // If the user does not have permission, maybe show access denied or redirect
     return (
